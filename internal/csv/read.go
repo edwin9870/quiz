@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"github.com/edwin9870/quiz/internal/util"
 )
@@ -20,6 +21,7 @@ func Read(filePath string) util.Answers {
 	scanner := bufio.NewScanner(os.Stdin)
 	typedAnswers := make([]string, 0)
 	correctAnswers := make([]string, 0)
+	answer := make(chan string)
 
 	for {
 		record, err := reader.Read()
@@ -33,10 +35,21 @@ func Read(filePath string) util.Answers {
 		}
 
 		correctAnswers = append(correctAnswers, record[1])
-		fmt.Printf("%v? ", record[0])
+		fmt.Printf("\n%v? ", record[0])
 
-		scanner.Scan()
-		typedAnswers = append(typedAnswers, scanner.Text())
+		go func() {
+			scanner.Scan()
+			answer <- scanner.Text()
+		}()
+
+		select {
+		case typedAnswer := <-answer:
+			typedAnswers = append(typedAnswers, typedAnswer)
+
+		case <-time.After(7 * time.Second):
+			typedAnswers = append(typedAnswers, "bad")
+
+		}
 	}
 
 	return util.CheckAnswers(correctAnswers, typedAnswers)
